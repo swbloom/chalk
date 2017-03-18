@@ -2,10 +2,27 @@ import React from 'react';
 import { Router, Route, Link, Navigation, History } from 'react-router';
 import auth from '../../services/authentication.jsx';
 import userData from '../../services/user.jsx';
+import { connect } from 'react-redux';
+import { logout } from '../../actions/actions.js';
 
-export default React.createClass({
+const mapStateToProps = (state) => {
+	return {
+		logged_in: state.logged_in
+	}
+}
+
+const mapDispatchToProps = (dispatch) => {
+	return ({
+		logout: () => {
+			dispatch(logout());
+		}
+	})
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(React.createClass({
 	displayName: 'Header',
 	logOut() {
+		this.props.logout();
 		auth.logOut();
 		this.props.clearUser();
 		this.props.history.pushState(null,'/');
@@ -27,4 +44,4 @@ export default React.createClass({
 			</header>
 		)
 	}
-});
+}));

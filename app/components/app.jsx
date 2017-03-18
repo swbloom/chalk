@@ -31,6 +31,15 @@ import ViewTest from './create-test/view.jsx';
 import EditTest from './create-test/edit-test.jsx';
 import EditQuestion from './questions/edit-question.jsx';
 import TestResults from './classroom/test-results.jsx';
+import rootReducer from '../reducers/reducers.js';
+import { createStore } from 'redux';
+import { Provider, connect } from 'react-redux';
+import { login, logout } from '../actions/actions.js';
+
+let store = createStore(
+		rootReducer, 
+		window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+	);
 
 let createBrowserHistory = require('history/lib/createBrowserHistory');
 let ReactCSSTransitionGroup = require('react-addons-css-transition-group');
@@ -38,7 +47,6 @@ function userName(context) {
 	return new Promise((resolve, reject) => {
 
 		if(auth.authenticated() === 'true') {
-
 			userData.getUser(config.getUserId()).then(data => {
 				if(data.error) {
 					auth.logOut();
@@ -50,9 +58,12 @@ function userName(context) {
 
 				userData.storeUser(data.user);
 
+				context.props.login();
 				context.setState({
 					user: data.user
 				});
+
+
 
 				if(data.user && data.user.first_sign_up === true) {
 					context.setState({
@@ -102,10 +113,11 @@ let App = React.createClass({
 			model.firstName = this.refs.firstName.value;
 			model.lastName = this.refs.lastName.value;
 			model.password = this.refs.password.value;
+
 			userData.updateUser(model).then((res) => {
 				this.setState({
 					user: res.user,
-					isModalOpen: false
+					isModalOpen: false,
 				});
 			});
 		}
@@ -165,33 +177,55 @@ let App = React.createClass({
 	}
 });
 
+const mapStateToProps = (state) => {
+	return {
+		logged_in: state.logged_in
+	}
+}
+
+const mapDispatchToProps = (dispatch) => {
+	return ({
+		login: () => {
+			dispatch(login());
+		},
+		logout: () => {
+			dispatch(logout());
+		}
+	})
+}
+
+App = connect(mapStateToProps, mapDispatchToProps)(App);
+
+
 
 ReactDom.render(
-	(<Router history={createBrowserHistory()} onUpdate={() => window.scrollTo(0, 0)}>
-		<Route path='/' component={App}>
-			<Route path='/dashboard' component={Dashboard}/>
-			<Route path='/classroom/manage' component={ManageClassrooms}/>
-			<Route path='/classroom/:courseId' component={Classroom}/>
-			<Route path='/classroom/:courseId/create-test' component={CreateTest} />
-			<Route path='/classroom/:courseId/view-test/:testId' component={ViewTest} />
-			<Route path='/classroom/:courseId/test-results' component={TestResults} />
-			<Route path='/edit-test/:testId' component={EditTest} />
-			<Route path='/classroom/:courseId/edit' component={EditClassroom} />
-			<Route path='/lesson/:lessonId/:classroomId' component={Lesson} />
-			<Route path='/lesson/:lessonId/:classroomId/edit' component={EditLesson}/>
-			<Route path='/lesson/:classroomId/:sectionId/new' component={NewLesson} />
-			<Route path='/topics' component={Topics} />
-			<Route path='/topic/:topicId/edit' component={EditTopics} />
-			<Route path='/topic/new' component={NewTopic} />
-			<Route path='/exercises' component={Exercises} />
-			<Route path='/instructors' component={Instructors} />
-			<Route path='/media' component={Media} />
-			<Route path='/course-templates' component={CourseTemplates} />
-			<Route path='/course-templates/:templateId/edit' component={EditTemplate}/>
-			<Route path='/members' component={Members} />
-			<Route path='/questions' component={Questions}  />
-			<Route path='/questions/:questionId/edit-question' component={EditQuestion}  />
-		</Route>
-	</Router>)
+	(<Provider store={store}>
+		<Router history={createBrowserHistory()} onUpdate={() => window.scrollTo(0, 0)}>
+			<Route path='/' component={App}>
+				<Route path='/dashboard' component={Dashboard}/>
+				<Route path='/classroom/manage' component={ManageClassrooms}/>
+				<Route path='/classroom/:courseId' component={Classroom}/>
+				<Route path='/classroom/:courseId/create-test' component={CreateTest} />
+				<Route path='/classroom/:courseId/view-test/:testId' component={ViewTest} />
+				<Route path='/classroom/:courseId/test-results' component={TestResults} />
+				<Route path='/edit-test/:testId' component={EditTest} />
+				<Route path='/classroom/:courseId/edit' component={EditClassroom} />
+				<Route path='/lesson/:lessonId/:classroomId' component={Lesson} />
+				<Route path='/lesson/:lessonId/:classroomId/edit' component={EditLesson}/>
+				<Route path='/lesson/:classroomId/:sectionId/new' component={NewLesson} />
+				<Route path='/topics' component={Topics} />
+				<Route path='/topic/:topicId/edit' component={EditTopics} />
+				<Route path='/topic/new' component={NewTopic} />
+				<Route path='/exercises' component={Exercises} />
+				<Route path='/instructors' component={Instructors} />
+				<Route path='/media' component={Media} />
+				<Route path='/course-templates' component={CourseTemplates} />
+				<Route path='/course-templates/:templateId/edit' component={EditTemplate}/>
+				<Route path='/members' component={Members} />
+				<Route path='/questions' component={Questions}  />
+				<Route path='/questions/:questionId/edit-question' component={EditQuestion}  />
+			</Route>
+		</Router>
+	</Provider>)
 	, document.getElementById('app'));
 

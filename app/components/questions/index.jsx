@@ -9,325 +9,192 @@ import FilteredSearch from './filteredSearch.jsx';
 import CodeArea from './codeArea.jsx';
 require('codemirror/mode/javascript/javascript');
 import Loading from '../loading/index.jsx';
+import Guid from 'guid';
 
+export default class QuestionsContainer extends React.Component {
+	constructor() {
+		super();
+		this.state = {
+			questions: {
+				categories: ['HTML', 'CSS', 'React', 'JavaScript'],
+				difficulties: ['Easy', 'Medium', 'Hard'],
+				types: ['Multiple Choice', 'Code']
+			},
+			question: {
+				title: '',
+				category: 'HTML',
+				description: '',
+				difficulty: 'Easy',
+				type: 'Multiple Choice',
+			},
+			multichoice: {
+				name: '',
+				options: [],
+				answer: null
+			}
+		};
+		this.updateQuestion = this.updateQuestion.bind(this);
+		this.updateMultichoice = this.updateMultichoice.bind(this);
+		this.addMultichoiceOption = this.addMultichoiceOption.bind(this);
+		this.addQuestion = this.addQuestion.bind(this);
+		this.handleSubmit = this.handleSubmit.bind(this);
+	}
 
-function findIndex(array,key,value) {
-	let index = 0;
-	for(let i = 0; i< array.length; i++) {
-		if(array[i][key] === value) {
-			index = i;
+	addQuestion() {
+		const { title, category, description, difficulty, type } = this.state.question;
+		let question;
+
+		if (title === '' || description === '') {
+			alert('Please enter a short description and body for your question.')
+			return;
+		}
+
+		if (type === 'Multiple Choice') {
+			question = Object.assign(this.state.question,{
+				multichoice: this.state.multichoice
+			});
+			console.log(question);
 		}
 	}
-	return index;
-}
 
-export default React.createClass({
-	displayName: 'Questions',
-	mixins: [AuthMixin,History],
-	getInitialState() {
-		return {
-			answerOption: [],
-			code: '',
-			testCode: '',
-			testMode: 'javascript',
-			readOnly: false,
-			showType: 'code',
-			questions: [],
-			realAnswer: "",
-			showFiltered: false,
-			filteredQuestions: [],
-			selectButton: 'false',
-			questionId: '',
-			assertions: [],
-			assertionError: '',
-			loading: false
-		}
-	},
-	componentWillMount() {
-		questionData.getQuestion()
-			.then(data => {
-				this.setState({
-					questions: data.questions
-				});
-			});
-	},
-
-	removeOption(label) {
-		const answerOption = this.state.answerOption.filter(answer => answer.label !== label);
-		this.setState({answerOption});
-	},
-	addOption(e) {
+	handleSubmit(e) {
 		e.preventDefault();
-		let setLabel = this.setLabel.value;
-		let setValue = this.setValue.value;
-		const setAnswer = this.setAnswer.value;
-		const answerArray = this.state.answerOption.slice();
+		this.addQuestion();
+	}
 
-		if(setLabel !== '' && setValue !== '') {
-			answerArray.push({
-				label: setLabel,
-				value: setValue,
-			})
-
-			this.setState({
-				answerOption: answerArray
-			})
-
-			this.setValue.value = "";
-			this.setLabel.value = ""
-		}
-	},
-	//Handles Codemirror implementation
-	changeMode(e) {
-		var mode = e.target.value;
+	updateQuestion(e) {
+		const question = Object.assign({}, this.state.question);
+		question[e.target.name] = e.target.value;
 		this.setState({
-			mode: mode
+			question
 		});
-	},
-	//Handles Codemirror implementation
-	updateCode(newCode) {
+	}
+
+	updateMultichoice(e) {
+		const multichoice = Object.assign({}, this.state.multichoice);
+		multichoice[e.target.name] = e.target.value;
 		this.setState({
-			code: newCode
-		})
-	},
-	updateTestCode(newCode) {
-		this.setState({
-			testCode: newCode
+			multichoice
 		});
-	},
-	//Handles Codemirror implementation
-	renderCode() {
-		var options = {
-			lineNumbers: true,
-			mode: 'javascript',
-			theme: 'cobalt',
-			fixedGutter: true
+	}
+
+	addMultichoiceOption(e) {
+		const state = JSON.parse(JSON.stringify(this.state));
+		const { multichoice } = state;
+		const option = {
+			id: Guid.raw(),
+			name: multichoice.name
 		};
-		return (
-			<CodeArea 
-				code={this.state.unitTest}
-				updateCode={this.updateCode}
-				testCode={this.state.testCode}
-				updateTestCode={this.updateTestCode}
-				testMode={this.state.testMode}
-				changeMode={this.changeMode}
-				testMode={this.state.testMode}
-				assertions={this.state.assertions}
-				validateCode={this.validateCode}
-				questionId={this.state.questionId}
-				assertionError={this.state.assertionError}
-			/>
-		)
-	},
-	validateCode(e) {
-		e.preventDefault();
-		this.setState({
-			loading: true
-		});
-		questionData.questionDryrun(this.state.questionId,this.state.testCode)
-			.then((res) => {
-				this.setState({
-					assertions: res.results.testResults,
-					assertionError: '',
-					loading: false
-				});
-			},(err) => {
-				this.setState({
-					assertionError: err.responseJSON.error,
-					loading: false
-				});
-			});
-	},
-	renderCards(key, index) {
-		const cardRender = (item,i) => {
-			return <QuestionCards key={`question-${i}`} question={item} removeCard={this.removeCard} editCard={this.editQuestion} selectButton={this.state.selectButton} showSelected="false"/>
-		};
-		if(this.state.showFiltered) {
-			return this.state.filteredQuestions.map(cardRender);
-		}
-		else {
-			return this.state.questions.map(cardRender);
-		}
-	},
-	removeCard(e,questionId) {
-		e.preventDefault();
-		questionData.deleteQuestion(questionId)
-			.then((res) => {
-				let questionsArray = Array.from(this.state.questions);
-				let questionsIndex = findIndex(questionsArray,"_id",questionId);
-				questionsArray.splice(questionsIndex,1);
-				this.setState({
-					questions: questionsArray
-				});
-			});
-	},
-	editQuestion(e, questionId) {
-		return <Link to={`/questions/${questionId}/edit-question`}></Link>
-	},
-	getType(e) {
-		const chosenType = e.target.value;
-		this.setState({
-			showType: chosenType
-		})
-		//if showType is equal MC then add class
-	},
-	addQuestion(e) {
-		e.preventDefault();
-		const title = this.questionTitle.value;
-		const body = this.question.value;
-		const multiAnswer = this.setAnswer.value;
-		const question = {
-			title,
-			type: this.state.showType,
-			body,
-			category: this.getCategory.value,
-			difficulty: this.getLevel.value,
-		};
-		if(title !== '' && body !== '') {
-			if(this.state.showType === 'code') {
-				question.unitTest = this.state.code;
-			}
-			else {
-				Object.assign(question,{
-					multiChoice: this.state.answerOption,
-					multiAnswer
-				});
-			}
-			if(this.state.questionId === '') {
-				questionData.createQuestion(question).then(res => {
-					const questionsArray = Array.from(this.state.questions);
-					questionsArray.push(res.question);
-					this.setState({
-						questionId: res.question._id,
-						questions: questionsArray
-					});
-				});
-			}
-			else {
-				//update
-				questionData.editQuestion(this.state.questionId,question)
-					.then(() => {
-						console.log('Question updated');
-					});
-			}
-			this.setAnswer.value = "";
-		}
-		else {
-			alert("Make sure you add a title and body to the question!")
-		}
-	},
-	changeQuestionView() {
-		this.setState({
-			showType: this.getType.value
-		});
-	},
-	showFiltered(options) {
-		this.setState(options);
-	},
+		multichoice.options.push(option);
+		this.setState(state);
+	}
+
 	render() {
 		return (
-			<div className="classCard">
+			<div className='classCard'>
 				<h2>Questions</h2>
-				<section className="full detailsForm topicsForm card">
-					<h3>Assign Attributes to your Question:</h3>
-					<form onSubmit={(() => {
-						if(this.state.questionId === '') {
-							return this.addQuestion;
-						}
-						else {
-							return this.updateQuestion;
-						}
-					})()}>
-						<div className="fieldRow">
-							<label className="inline largeLabel">Title of your question:</label>
-							<input type="text" ref={ref => this.questionTitle = ref}/>
-						</div>
-						<div className="fieldRow">
-							<label className="inline largeLabel">Category</label>
-							<select ref={ref => this.getCategory = ref} defaultValue="javascript">
-								<option value="html">HTML</option>
-								<option value="css">CSS</option>
-								<option value="javascript">JavaScript</option>
-								<option value="react">React</option>
-							</select>
-						</div>
-						<div className="fieldRow">
-							<label className="inline largeLabel">What is the Question?</label>
-							<textarea className="inline largeLabel" ref={ref => this.question = ref} row="2" col="100"></textarea>
-						</div>
-						<div className="fieldRow">
-							<label className="inline largeLabel">Level of Difficulty</label>
-							<select ref={ref => this.getLevel = ref}>
-								<option value="easy">Easy</option>
-								<option value="medium">Medium</option>
-								<option value="hard">Hard</option>
-							</select>
-							<label htmlFor="type" className="inline largeLabel">Type</label>
-							<select name="type" ref={ref => this.getType = ref} defaultValue={this.state.showType} onChange={(e) => this.changeQuestionView() }>
-								<option value="multiple choice">Multiple Choice</option>
-								<option value="code">Code</option>
-							</select>
-						</div>
-						<div className="typeCard" onFocus={this.testing}>
-							<div className={this.state.showType === 'multiple choice' ? 'showType' : 'hideType'}>
-								<div className="fieldRow">
-									<h3>Multiple Choice:</h3>
-									<label className="inline largeLabel">Label of your Answers</label>
-									<input type="text" ref={ref => this.setLabel = ref}/>
-								</div>
-								<div className="fieldRow">
-									<label className="inline largeLabel">Set a value</label>
-									<input type="text" ref={ref => this.setValue = ref}/>
-									<button onClick={this.addOption} className="success">Add option</button>
-								</div>
-								<div className="fieldRow">
-									{this.state.answerOption.map((item, i) => {
-										return (
-											<div className="mc-options" key={i}>
-												<input className="inline" name="lala" type="radio" value={item.value}/>
-												<label>{item.label}&nbsp;
-												<i onClick={() => this.removeOption(item.label)} className="fa fa-times"></i>
-												</label>
-												
-											</div>
-										)
-									})}
-								</div>
-								<div className="fieldRow">
-									<label className="inline largeLabel">What is the answer?</label>
-									<input type="text" ref={ref => this.setAnswer = ref}/>
-								</div>
-							</div>
-							<div className={this.state.showType === 'code' ? 'showType' : 'hideType'}>
-								<div className="fieldRow">
-									<h3>Code Based Question:</h3>
-									{this.renderCode()}
-								</div>
-							</div>
-						</div>
-						<input type="submit" value={(() => {
-							if(this.state.questionId === '') {
-								return "Submit";
-							}
-							else {
-								return "Save"
-							}
-						})()}
-						className="success"/>
-					</form>
-				</section>
-				
-				<section className="full detailsForm topicsForm card">
-					<FilteredSearch questionState={this.state.questions} showFiltered={this.showFiltered}/>
-				</section>
-				<section>
-					<h3>All Questions:</h3>
-					<article className="questionCard__wrapper">
-						{this.renderCards()}
-					</article>
-				</section>
-				<Loading loading={this.state.loading} loadingText='Validating Question!'/>
+				<CreateQuestion 
+					addMultichoiceOption={this.addMultichoiceOption}
+					handleSubmit={this.handleSubmit}
+					updateQuestion={this.updateQuestion}
+					updateMultichoice={this.updateMultichoice}
+					settings={this.state.questions}
+					question={this.state.question}
+					multichoice={this.state.multichoice} 
+				/>
 			</div>
 		)
 	}
-});
+}
+
+const CreateQuestion = (props) => {
+	const { question, 
+			settings,
+			handleSubmit,
+			updateQuestion,
+			updateMultichoice,
+			addMultichoiceOption,
+			multichoice } = props;
+	
+	const createDropdown = (name, arr) => {
+		return (<select name={name} value={question[name]} onChange={updateQuestion}>
+					{arr.map((instance, i) => {
+						return <option key={`${name}-${i}`} value={instance}>{instance}</option>
+					})}
+				</select>)
+	}
+	
+	const showMultichoiceQuestion = () => {
+		return (
+			<div>
+				<div className='fieldRow'>
+					Question: {question.description}
+					<ul>
+						{multichoice.options.map((option, i) => {
+							return (<li key={`question-example-${i}`}> 
+								<p>{option.name}</p> 
+								<i className="fa fa-times"></i>
+							</li>)
+						})}
+					</ul>
+				</div>
+				<div clasName='fieldRow'>
+					<label className='inline largeLabel'>Add an answer</label>
+					<input type='text' name='name' onChange={updateMultichoice} />
+					<button className='success' onClick={addMultichoiceOption}>Add option</button>				
+				</div>
+				<div className='fieldRow'>
+					<label className='inline largeLabel'>The correct answer is</label>
+					<select value={multichoice.options.answer} name='answer' onChange={updateMultichoice}>
+						{multichoice.options.length === 0 && <option>No options added</option>}
+						{multichoice.options.map((option, i) => <option key={`multichoice-${i}`} value={option.id}>{option.name}</option>)}
+					</select>
+				</div>
+			</div>
+		)
+	}
+
+	const handleQuestionType = () => {
+		if (question.type === 'Multiple Choice') {
+			return (<div>
+				<h3>Multiple Choice</h3>
+				{showMultichoiceQuestion()}
+			</div>)
+		} else if (question.type === 'Code') {
+			return (<div>
+				<h3>Code Challenge</h3>
+			</div>)
+		}
+	}
+
+	return (
+		<section className='full detailsForm topicsForm card'>
+			<h3>Create Question</h3>
+			<form onSubmit={handleSubmit}>
+				<div className='fieldRow'>
+					<label className='inline largeLabel'>Short Description</label>
+					<input type="text" placeholder='e.g Map vs. forEach' name="title" value={question.title} onChange={updateQuestion} />
+				</div>
+				<div className='fieldRow'>
+					<label className='inline largeLabel'>Category</label>
+					{createDropdown('category', settings.categories)}
+				</div>
+				<div className='fieldRow'>
+					<label className='inline largeLabel'>What is the Question?</label>
+					<textarea name='description' className='inline largeLabel' onChange={updateQuestion}>
+					</textarea>
+				</div>
+				<div className='fieldRow'>
+					<label className='inline largeLabel'>Level of Difficulty</label>
+					{createDropdown('difficulty', settings.difficulties)}
+					<label className='inline largeLabel'>Type</label>
+					{createDropdown('type', settings.types)}
+				</div>
+				<div className='typeCard'>
+					{handleQuestionType()}
+				</div>
+				<button className='success'>Submit</button>
+			</form>
+		</section>
+	)
+}
